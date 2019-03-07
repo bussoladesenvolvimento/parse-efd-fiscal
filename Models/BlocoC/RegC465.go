@@ -1,7 +1,7 @@
 package BlocoC
 
 import (
-	"github.com/chapzin/parse-efd-fiscal/Models/Bloco0"
+	"github.com/bussoladesenvolvimento/parse-efd-fiscal/Models/Bloco0"
 	"github.com/jinzhu/gorm"
 	"time"
 )

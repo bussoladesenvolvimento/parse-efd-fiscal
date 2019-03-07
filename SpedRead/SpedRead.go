@@ -2,9 +2,10 @@ package SpedRead
 
 import (
 	"bufio"
-	"github.com/chapzin/parse-efd-fiscal/Models/NotaFiscal"
-	"github.com/chapzin/parse-efd-fiscal/SpedExec"
-	"github.com/chapzin/parse-efd-fiscal/tools"
+	"fmt"
+	"github.com/bussoladesenvolvimento/parse-efd-fiscal/Models/NotaFiscal"
+	"github.com/bussoladesenvolvimento/parse-efd-fiscal/SpedExec"
+	"github.com/bussoladesenvolvimento/parse-efd-fiscal/tools"
 	"github.com/clbanning/mxj"
 	"github.com/jinzhu/gorm"
 	"io/ioutil"
@@ -18,7 +19,10 @@ var id int
 var maxid = 98
 
 // Ler todos os arquivos de uma determinada pasta
-func RecursiveSpeds(path string, dialect string, conexao string, digitosCodigo string) {
+func RecursiveSpeds(path string, notas *[]NotaFiscal.NotaFiscal, dialect string, conexao string, digitosCodigo string) {
+
+	//listSped := SpedExec.Regs{}
+
 	filepath.Walk(path, func(file string, f os.FileInfo, err error) error {
 		if f.IsDir() == false {
 			ext := filepath.Ext(file)
@@ -27,13 +31,15 @@ func RecursiveSpeds(path string, dialect string, conexao string, digitosCodigo s
 				r := SpedExec.Regs{}
 				r.Digito = digitosCodigo
 				id++
-				go InsertSped(file, &r, dialect, conexao)
+				InsertSped(file, &r, dialect, conexao)
+				//go InsertSped(file, &r, dialect, conexao)
 
 			}
 
 			if ext == ".xml" || ext == ".XML" {
 				id++
-				go InsertXml(file, dialect, conexao, digitosCodigo)
+				InsertXml(notas, file, dialect, conexao, digitosCodigo)
+				//go InsertXml(file, dialect, conexao, digitosCodigo)
 
 			}
 			wait()
@@ -53,7 +59,8 @@ func wait() {
 
 }
 
-func InsertXml(xml string, dialect string, conexao string, digitosCodigo string) {
+func InsertXml(notas *[]NotaFiscal.NotaFiscal, xml string, dialect string, conexao string, digitosCodigo string) {
+
 	digitosCodigo2 := tools.ConvInt(digitosCodigo)
 	db, err := gorm.Open(dialect, conexao)
 	// Teste de lista produtos
@@ -184,7 +191,6 @@ func InsertXml(xml string, dialect string, conexao string, digitosCodigo string)
 			DtEmit:    tools.ConvertDataXml(dEmit),
 		}
 		itens = append(itens, Item)
-		//fmt.Printf("%#v\n",Item)
 	}
 
 	notafiscal := NotaFiscal.NotaFiscal{
@@ -206,9 +212,12 @@ func InsertXml(xml string, dialect string, conexao string, digitosCodigo string)
 		Destinatario: destinatario,
 		Itens:        itens,
 	}
+
+	fmt.Println("Inserindo nota fiscal no banco")
 	db.NewRecord(notafiscal)
 	db.Create(&notafiscal)
 	db.Close()
+	*notas = append(*notas, notafiscal)
 	id--
 }
 

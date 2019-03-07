@@ -1,10 +1,10 @@
 package SpedExec
 
 import (
-	"github.com/chapzin/parse-efd-fiscal/Models/Bloco0"
-	"github.com/chapzin/parse-efd-fiscal/Models/BlocoC"
-	"github.com/chapzin/parse-efd-fiscal/Models/BlocoH"
-	"github.com/chapzin/parse-efd-fiscal/SpedDB"
+	"github.com/bussoladesenvolvimento/parse-efd-fiscal/Models/Bloco0"
+	"github.com/bussoladesenvolvimento/parse-efd-fiscal/Models/BlocoC"
+	"github.com/bussoladesenvolvimento/parse-efd-fiscal/Models/BlocoH"
+	"github.com/bussoladesenvolvimento/parse-efd-fiscal/SpedDB"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jinzhu/gorm"
 	"strings"
@@ -28,7 +28,7 @@ func TrataLinha(ln1 string, linha string, r *Regs, db gorm.DB) {
 		// Caso já exista informacoes da movimentacao dos produtos referente ao sped que está sendo importado os dados são deletados
 		SpedDB.CleanSpedItems(r.Reg0000.Cnpj, r.Reg0000.DtIni, r.Reg0000.DtFin, db)
 		db.NewRecord(r.Reg0000)
-		db.Create(&r.Reg0000)
+		db.Debug().Create(&r.Reg0000)
 	case "0001":
 		//fmt.Println(linha)
 	case "0005":

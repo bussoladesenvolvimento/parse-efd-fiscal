@@ -1,11 +1,11 @@
 package Controllers
 
 import (
-	"github.com/chapzin/parse-efd-fiscal/Models"
-	"github.com/chapzin/parse-efd-fiscal/Models/Bloco0"
-	"github.com/chapzin/parse-efd-fiscal/Models/BlocoC"
-	"github.com/chapzin/parse-efd-fiscal/Models/BlocoH"
-	"github.com/chapzin/parse-efd-fiscal/Models/NotaFiscal"
+	"github.com/bussoladesenvolvimento/parse-efd-fiscal/Models"
+	"github.com/bussoladesenvolvimento/parse-efd-fiscal/Models/Bloco0"
+	"github.com/bussoladesenvolvimento/parse-efd-fiscal/Models/BlocoC"
+	"github.com/bussoladesenvolvimento/parse-efd-fiscal/Models/BlocoH"
+	"github.com/bussoladesenvolvimento/parse-efd-fiscal/Models/NotaFiscal"
 	"github.com/fatih/color"
 	"github.com/jinzhu/gorm"
 	"github.com/tealeg/xlsx"

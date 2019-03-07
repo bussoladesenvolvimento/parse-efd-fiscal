@@ -1,8 +1,8 @@
 package BlocoH
 
 import (
-	"github.com/chapzin/parse-efd-fiscal/Models/Bloco0"
-	"github.com/chapzin/parse-efd-fiscal/tools"
+	"github.com/bussoladesenvolvimento/parse-efd-fiscal/Models/Bloco0"
+	"github.com/bussoladesenvolvimento/parse-efd-fiscal/tools"
 	"github.com/jinzhu/gorm"
 	"time"
 )

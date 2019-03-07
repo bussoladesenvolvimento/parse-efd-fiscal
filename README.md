@@ -1,6 +1,6 @@
 # Analise e Auditoria EFD Fiscal em Go
 [![Build Status](https://travis-ci.org/chapzin/parse-efd-fiscal.svg?branch=master)](https://travis-ci.org/chapzin/parse-efd-fiscal)
-[![Go Report Card](https://goreportcard.com/badge/github.com/chapzin/parse-efd-fiscal)](https://goreportcard.com/report/github.com/chapzin/parse-efd-fiscal)
+[![Go Report Card](https://goreportcard.com/badge/github.com/bussoladesenvolvimento/parse-efd-fiscal)](https://goreportcard.com/report/github.com/bussoladesenvolvimento/parse-efd-fiscal)
 [![MIT Licensed](https://img.shields.io/badge/license-MIT-green.svg)](https://tldrlegal.com/license/mit-license)
 [![Join the chat at https://gitter.im/olebedev/go-starter-kit](https://img.shields.io/gitter/room/nwjs/nw.js.svg?maxAge=2592000&style=plastic)](https://gitter.im/GoAuditoriaFiscal/Lobby?utm_source=share-link&utm_medium=link&utm_campaign=share-link)
 [![Donate](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=R673QGW2LQVCJ)
@@ -16,7 +16,7 @@ Este arquivo deverá ser assinado digitalmente e transmitido, via Internet, ao a
 
 ## Como compilar 
 ```
-go get github.com/chapzin/parse-efd-fiscal
+go get github.com/bussoladesenvolvimento/parse-efd-fiscal
 go build
 ```
 
@@ -80,7 +80,7 @@ O principal objetivo do sistema é facilitar que as empresas possam fazer um ana
 
 ## Dúvidas?
 
-Abra um issue na página do projeto no GitHub ou [clique aqui](https://github.com/chapzin/parse-efd-fiscal/issues).
+Abra um issue na página do projeto no GitHub ou [clique aqui](https://github.com/bussoladesenvolvimento/parse-efd-fiscal/issues).
 
 ## Donate
 Ajude a acabar com as injustiça feita pela SEFAZ devido a tantas obrigações a serem entregues.
@@ -90,7 +90,7 @@ Donate via [PayPal](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_b
 ## Colaboradores
 
 FixAuditoria - www.fixauditoria.com.br
-- Ricardo Gomes (https://github.com/chapzin)
+- Ricardo Gomes (https://github.com/bussoladesenvolvimento)
 - Junior Holanda (https://github.com/holandajunior)
 - Cesar Gimenes (https://github.com/crgimenes)
 

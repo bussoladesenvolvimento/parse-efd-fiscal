@@ -2,7 +2,7 @@ package SpedDB
 
 import (
 	"fmt"
-	"github.com/chapzin/parse-efd-fiscal/Models"
+	"github.com/bussoladesenvolvimento/parse-efd-fiscal/Models"
 	"github.com/jinzhu/gorm"
 )
 

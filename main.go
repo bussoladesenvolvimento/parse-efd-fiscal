@@ -3,11 +3,12 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/chapzin/parse-efd-fiscal/Controllers"
-	"github.com/chapzin/parse-efd-fiscal/SpedDB"
-	"github.com/chapzin/parse-efd-fiscal/SpedRead"
-	"github.com/chapzin/parse-efd-fiscal/config"
-	"github.com/chapzin/parse-efd-fiscal/tools"
+	"github.com/bussoladesenvolvimento/parse-efd-fiscal/Controllers"
+	"github.com/bussoladesenvolvimento/parse-efd-fiscal/Models/NotaFiscal"
+	"github.com/bussoladesenvolvimento/parse-efd-fiscal/SpedDB"
+	"github.com/bussoladesenvolvimento/parse-efd-fiscal/SpedRead"
+	"github.com/bussoladesenvolvimento/parse-efd-fiscal/config"
+	"github.com/bussoladesenvolvimento/parse-efd-fiscal/tools"
 	"github.com/fatih/color"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
@@ -19,10 +20,12 @@ import (
 
 var schema = flag.Bool("schema", false, "Recria as tabelas")
 var importa = flag.Bool("importa", false, "Importa os xmls e speds ")
+var ecf = flag.Bool("ecf", false, "Importa os ecfs ")
 var inventario = flag.Bool("inventario", false, "Fazer processamento do inventario")
-var anoInicial = flag.Int("anoInicial", 0, "Ano inicial do processamento do inventário")
-var anoFinal = flag.Int("anoFinal", 0, "Ano inicial do processamento do inventário")
+var anoInicial = flag.Int("anoInicial", 2012, "Ano inicial do processamento do inventário")
+var anoFinal = flag.Int("anoFinal", 2019, "Ano inicial do processamento do inventário")
 var excel = flag.Bool("excel", false, "Gera arquivo excel do inventario")
+var excelNota = flag.Bool("excelNota", true, "Gera arquivo excel da nota")
 var h010 = flag.Bool("h010", false, "Gera arquivo h010 e 0200 no layout sped para ser importado")
 
 func init() {
@@ -48,14 +51,56 @@ func main() {
 		SpedDB.Schema(*db)
 	}
 
+	//if *ecf {
+	//	// Lendo todos arquivos da pasta speds
+	//	fmt.Println("Iniciando processamento ecf", time.Now())
+	//	EcfRead.RecursiveEcfs("./ecfs", dialect, conexao, digitos)
+	//	// Pega cada arquivo e ler linha a linha e envia para o banco de dados
+	//	fmt.Println("Final processamento ecf", time.Now())
+	//	var s string
+	//	fmt.Scanln(&s)
+	//}
+
+	notas := []NotaFiscal.NotaFiscal{}
 	if *importa {
+
 		// Lendo todos arquivos da pasta speds
 		fmt.Println("Iniciando processamento ", time.Now())
-		SpedRead.RecursiveSpeds("./speds", dialect, conexao, digitos)
+		SpedRead.RecursiveSpeds("./speds", &notas, dialect, conexao, digitos)
 		// Pega cada arquivo e ler linha a linha e envia para o banco de dados
 		fmt.Println("Final processamento ", time.Now())
 		var s string
 		fmt.Scanln(&s)
+	}
+
+	if *excelNota {
+
+
+		notas := Controllers.PopularItens(*db)
+
+		var file *xlsx.File
+		var sheet *xlsx.Sheet
+		var err error
+
+		file = xlsx.NewFile()
+
+		sheet, err = file.AddSheet(tools.PLANILHA_NOTA)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		Controllers.ExcelMenuNota(sheet)
+		Controllers.ExcelAddNota(notas, sheet)
+
+		err = file.Save("NotasFiscais.xlsx")
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		} else {
+			fmt.Println("Arquivo de Analise Inventario Gerado com Sucesso!!!")
+		}
+
 	}
 
 	if *inventario {
