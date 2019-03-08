@@ -46,7 +46,7 @@ func ExcelNota(sheet *xlsx.Sheet, nf NotaFiscal.NotaFiscal) {
 	ColunaAdd(menu, nf.IndPag)
 	ColunaAdd(menu, nf.Mod)
 	ColunaAdd(menu, nf.Serie)
-	ColunaAdd(menu, nf.DEmi)
+	ColunaAdd(menu, "Emissao")
 	ColunaAdd(menu, nf.TpNF)
 	ColunaAdd(menu, nf.TpImp)
 	ColunaAdd(menu, nf.TpEmis)

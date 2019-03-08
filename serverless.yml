@@ -1,0 +1,52 @@
+# Welcome to Serverless!
+# docs.serverless.com
+
+service: 
+  name: notafiscal # NOTE: update this with your service name
+
+frameworkVersion: ">=1.0.0 <2.0.0" # Versao do template
+
+provider:
+  name: aws
+  region: us-east-1 # Regiao da AWS
+  runtime: go1.x
+  tags:
+    projeto: notafiscal
+  stackTags:
+    projeto: notafiscal
+  stage: ${opt:stage, 'dev'} # Define o ambiente (dev, qa, alpha, beta, prod)
+  memorySize: 128 # Memoria ram do Lambda
+  versionFunctions: false
+  apiGateway:
+    restApiId:
+      'dow5w1jcx7'
+    restApiRootResourceId:
+      'fjy1lzb85l'
+
+  # Define a politica de acesso do IAM para o Lambda
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+        - "s3:*"
+        - "iam:ListRoles"
+        - "iam:ListOpenIdConnectProviders"
+      Resource: "*"
+
+package:
+ exclude:
+   - ".*/**"
+ include:
+   - ./bin/**
+functions:
+  notafiscal:
+    handler: bin/notafiscal
+    name: ${self:provider.stage}-${self:service.name}
+    description: Realiza upload de um arquivo
+    timeout: 30 # Define tempo maximo de execucao
+    events: # All events associated with this function
+      - http:
+          path: /file
+          method: post
+    environment:
+      LANGUAGE_DEFAULT: pt-BR
+

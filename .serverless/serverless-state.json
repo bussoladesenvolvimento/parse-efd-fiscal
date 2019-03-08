@@ -1,0 +1,345 @@
+{
+  "service": {
+    "service": "notafiscal",
+    "serviceObject": {
+      "name": "notafiscal"
+    },
+    "provider": {
+      "stage": "dev",
+      "region": "us-east-1",
+      "variableSyntax": "\\${([ ~:a-zA-Z0-9._@'\",\\-\\/\\(\\)]+?)}",
+      "name": "aws",
+      "runtime": "go1.x",
+      "tags": {
+        "projeto": "notafiscal"
+      },
+      "stackTags": {
+        "projeto": "notafiscal"
+      },
+      "memorySize": 128,
+      "versionFunctions": false,
+      "apiGateway": {
+        "restApiId": "dow5w1jcx7",
+        "restApiRootResourceId": "fjy1lzb85l"
+      },
+      "iamRoleStatements": [
+        {
+          "Effect": "Allow",
+          "Action": [
+            "s3:*",
+            "iam:ListRoles",
+            "iam:ListOpenIdConnectProviders"
+          ],
+          "Resource": "*"
+        }
+      ],
+      "remoteFunctionData": null,
+      "compiledCloudFormationTemplate": {
+        "AWSTemplateFormatVersion": "2010-09-09",
+        "Description": "The AWS CloudFormation template for this Serverless application",
+        "Resources": {
+          "ServerlessDeploymentBucket": {
+            "Type": "AWS::S3::Bucket"
+          },
+          "NotafiscalLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/dev-notafiscal"
+            }
+          },
+          "IamRoleLambdaExecution": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+              "AssumeRolePolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Principal": {
+                      "Service": [
+                        "lambda.amazonaws.com"
+                      ]
+                    },
+                    "Action": [
+                      "sts:AssumeRole"
+                    ]
+                  }
+                ]
+              },
+              "Policies": [
+                {
+                  "PolicyName": {
+                    "Fn::Join": [
+                      "-",
+                      [
+                        "dev",
+                        "notafiscal",
+                        "lambda"
+                      ]
+                    ]
+                  },
+                  "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                      {
+                        "Effect": "Allow",
+                        "Action": [
+                          "logs:CreateLogStream"
+                        ],
+                        "Resource": [
+                          {
+                            "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/dev-notafiscal:*"
+                          }
+                        ]
+                      },
+                      {
+                        "Effect": "Allow",
+                        "Action": [
+                          "logs:PutLogEvents"
+                        ],
+                        "Resource": [
+                          {
+                            "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/dev-notafiscal:*:*"
+                          }
+                        ]
+                      },
+                      {
+                        "$ref": "$[\"service\"][\"provider\"][\"iamRoleStatements\"][0]"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "Path": "/",
+              "RoleName": {
+                "Fn::Join": [
+                  "-",
+                  [
+                    "notafiscal",
+                    "dev",
+                    "us-east-1",
+                    "lambdaRole"
+                  ]
+                ]
+              }
+            }
+          },
+          "NotafiscalLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "Code": {
+                "S3Bucket": {
+                  "Ref": "ServerlessDeploymentBucket"
+                },
+                "S3Key": "serverless/notafiscal/dev/1552066149027-2019-03-08T17:29:09.027Z/notafiscal.zip"
+              },
+              "FunctionName": "dev-notafiscal",
+              "Handler": "bin/notafiscal",
+              "MemorySize": 128,
+              "Role": {
+                "Fn::GetAtt": [
+                  "IamRoleLambdaExecution",
+                  "Arn"
+                ]
+              },
+              "Runtime": "go1.x",
+              "Timeout": 30,
+              "Description": "Realiza upload de um arquivo",
+              "Tags": [
+                {
+                  "Key": "projeto",
+                  "Value": "notafiscal"
+                }
+              ],
+              "Environment": {
+                "Variables": {
+                  "LANGUAGE_DEFAULT": "pt-BR"
+                }
+              }
+            },
+            "DependsOn": [
+              "NotafiscalLogGroup",
+              "IamRoleLambdaExecution"
+            ]
+          },
+          "ApiGatewayResourceFile": {
+            "Type": "AWS::ApiGateway::Resource",
+            "Properties": {
+              "ParentId": "fjy1lzb85l",
+              "PathPart": "file",
+              "RestApiId": "dow5w1jcx7"
+            }
+          },
+          "ApiGatewayMethodFilePost": {
+            "Type": "AWS::ApiGateway::Method",
+            "Properties": {
+              "HttpMethod": "POST",
+              "RequestParameters": {},
+              "ResourceId": {
+                "Ref": "ApiGatewayResourceFile"
+              },
+              "RestApiId": "dow5w1jcx7",
+              "ApiKeyRequired": false,
+              "AuthorizationType": "NONE",
+              "Integration": {
+                "IntegrationHttpMethod": "POST",
+                "Type": "AWS_PROXY",
+                "Uri": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":apigateway:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":lambda:path/2015-03-31/functions/",
+                      {
+                        "Fn::GetAtt": [
+                          "NotafiscalLambdaFunction",
+                          "Arn"
+                        ]
+                      },
+                      "/invocations"
+                    ]
+                  ]
+                }
+              },
+              "MethodResponses": []
+            }
+          },
+          "ApiGatewayDeployment1552066149377": {
+            "Type": "AWS::ApiGateway::Deployment",
+            "Properties": {
+              "RestApiId": "dow5w1jcx7",
+              "StageName": "dev"
+            },
+            "DependsOn": [
+              "ApiGatewayMethodFilePost"
+            ]
+          },
+          "NotafiscalLambdaPermissionApiGateway": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+              "FunctionName": {
+                "Fn::GetAtt": [
+                  "NotafiscalLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "Action": "lambda:InvokeFunction",
+              "Principal": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "apigateway.",
+                    {
+                      "Ref": "AWS::URLSuffix"
+                    }
+                  ]
+                ]
+              },
+              "SourceArn": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":execute-api:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":",
+                    "dow5w1jcx7",
+                    "/*/*"
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        "Outputs": {
+          "ServerlessDeploymentBucketName": {
+            "Value": {
+              "Ref": "ServerlessDeploymentBucket"
+            }
+          },
+          "ServiceEndpoint": {
+            "Description": "URL of the service endpoint",
+            "Value": {
+              "Fn::Join": [
+                "",
+                [
+                  "https://",
+                  "dow5w1jcx7",
+                  ".execute-api.us-east-1.",
+                  {
+                    "Ref": "AWS::URLSuffix"
+                  },
+                  "/dev"
+                ]
+              ]
+            }
+          }
+        }
+      },
+      "coreCloudFormationTemplate": {
+        "AWSTemplateFormatVersion": "2010-09-09",
+        "Description": "The AWS CloudFormation template for this Serverless application",
+        "Resources": {
+          "ServerlessDeploymentBucket": {
+            "Type": "AWS::S3::Bucket"
+          }
+        },
+        "Outputs": {
+          "ServerlessDeploymentBucketName": {
+            "Value": {
+              "Ref": "ServerlessDeploymentBucket"
+            }
+          }
+        }
+      },
+      "vpc": {}
+    },
+    "pluginsData": {},
+    "functions": {
+      "notafiscal": {
+        "handler": "bin/notafiscal",
+        "name": "dev-notafiscal",
+        "description": "Realiza upload de um arquivo",
+        "timeout": 30,
+        "events": [
+          {
+            "http": {
+              "path": "file",
+              "method": "post",
+              "integration": "AWS_PROXY"
+            }
+          }
+        ],
+        "environment": {
+          "LANGUAGE_DEFAULT": "pt-BR"
+        },
+        "package": {},
+        "memory": 128,
+        "runtime": "go1.x",
+        "vpc": {}
+      }
+    },
+    "layers": {},
+    "artifact": "/home/ricardo/go/src/github.com/bussoladesenvolvimento/parse-efd-fiscal/.serverless/notafiscal.zip"
+  },
+  "package": {
+    "artifactDirectoryName": "serverless/notafiscal/dev/1552066149027-2019-03-08T17:29:09.027Z",
+    "artifact": "notafiscal.zip"
+  }
+}
