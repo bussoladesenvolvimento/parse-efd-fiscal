@@ -3,6 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/bussoladesenvolvimento/parse-efd-fiscal/Controllers"
 	"github.com/bussoladesenvolvimento/parse-efd-fiscal/Models/NotaFiscal"
 	"github.com/bussoladesenvolvimento/parse-efd-fiscal/SpedDB"
@@ -13,7 +15,8 @@ import (
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
 	"github.com/tealeg/xlsx"
-	"os"
+	"log"
+	"net/http"
 	"sync"
 	"time"
 )
@@ -28,13 +31,26 @@ var excel = flag.Bool("excel", false, "Gera arquivo excel do inventario")
 var excelNota = flag.Bool("excelNota", true, "Gera arquivo excel da nota")
 var h010 = flag.Bool("h010", false, "Gera arquivo h010 e 0200 no layout sped para ser importado")
 
+
 func init() {
 	flag.Parse()
 	cfg := new(config.Configurador)
 	config.InicializaConfiguracoes(cfg)
 }
 
-func main() {
+func run(r events.APIGatewayProxyRequest) (*events.APIGatewayProxyResponse, error){
+
+	ht, err := ParseHttpRequest(r)
+
+	file, err := GetFile("file", ht)
+	if err != nil {
+		log.Println(err.Error())
+		return nil, nil
+	}
+
+	fmt.Println(file.Name)
+
+
 	dialect, err := config.Propriedades.ObterTexto("bd.dialect")
 	conexao, err := config.Propriedades.ObterTexto("bd.conexao.mysql")
 	digitos, err := config.Propriedades.ObterTexto("bd.digit.cod")
@@ -43,7 +59,7 @@ func main() {
 	//defer db.Close()
 	if err != nil {
 		fmt.Println("Falha ao abrir conexão. dialect=?, Linha de Conexao=?", dialect, conexao)
-		return
+		return WriteStruct(NewUploadError(), http.StatusBadRequest)
 	}
 
 	if *schema {
@@ -87,7 +103,7 @@ func main() {
 		sheet, err = file.AddSheet(tools.PLANILHA_NOTA)
 		if err != nil {
 			fmt.Println(err)
-			os.Exit(1)
+			return WriteStruct(NewUploadError(), http.StatusBadRequest)
 		}
 
 		Controllers.ExcelMenuNota(sheet)
@@ -96,7 +112,7 @@ func main() {
 		err = file.Save("NotasFiscais.xlsx")
 		if err != nil {
 			fmt.Println(err)
-			os.Exit(1)
+			return WriteStruct(NewUploadError(), http.StatusBadRequest)
 		} else {
 			fmt.Println("Arquivo de Analise Inventario Gerado com Sucesso!!!")
 		}
@@ -114,13 +130,13 @@ func main() {
 
 		if *anoInicial == 0 || *anoFinal == 0 {
 			fmt.Println("Favor informar o ano inicial que deseja processar. Exemplo -anoInicial=2011")
-			return
+			return WriteStruct(NewUploadError(), http.StatusBadRequest)
 		} else if *anoInicial <= 2011 || *anoFinal <= 2011 {
 			fmt.Println("Favor informar um ano maior que 2011")
-			return
+			return WriteStruct(NewUploadError(), http.StatusBadRequest)
 		} else if *anoInicial <= 999 || *anoFinal <= 999 {
 			fmt.Println("Favor informar o ano com 4 digitos. Exemplo 2017")
-			return
+			return WriteStruct(NewUploadError(), http.StatusBadRequest)
 		} else if *anoInicial > *anoFinal {
 			fmt.Println("O ano inicial deve ser menor que o ano final")
 		}
@@ -158,7 +174,7 @@ func main() {
 		sheet, err = file.AddSheet(tools.PLANILHA)
 		if err != nil {
 			fmt.Println(err)
-			os.Exit(1)
+			return WriteStruct(NewUploadError(), http.StatusBadRequest)
 		}
 
 		Controllers.ExcelMenu(sheet)
@@ -167,7 +183,7 @@ func main() {
 		err = file.Save("AnaliseInventario.xlsx")
 		if err != nil {
 			fmt.Println(err)
-			os.Exit(1)
+			return WriteStruct(NewUploadError(), http.StatusBadRequest)
 		} else {
 			fmt.Println("Arquivo de Analise Inventario Gerado com Sucesso!!!")
 		}
@@ -183,5 +199,19 @@ func main() {
 		}
 
 	}
+
+	resp, err := WriteStruct(&APIResponse{Success: true}, 200)
+
+	if err != nil {
+		log.Println(err.Error())
+		return nil, nil
+	}
+
+	return resp, nil
+}
+
+func main() {
+
+	lambda.Start(run)
 
 }
