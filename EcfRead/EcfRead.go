@@ -2,6 +2,7 @@ package EcfRead
 
 import (
 	"bufio"
+	"fmt"
 	"github.com/bussoladesenvolvimento/parse-efd-fiscal/Models/NotaFiscal"
 	"github.com/bussoladesenvolvimento/parse-efd-fiscal/SpedExec"
 	"github.com/bussoladesenvolvimento/parse-efd-fiscal/tools"
@@ -55,7 +56,7 @@ func wait() {
 
 func InsertEcf(xml string, dialect string, conexao string, digitosCodigo string) {
 	digitosCodigo2 := tools.ConvInt(digitosCodigo)
-	db, err := gorm.Open(dialect, conexao)
+	db, err := gorm.Open(dialect, fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8&parseTime=True", "userdiniz", "apmGj]Jj]]Jo", "dbdiniz.cjayksip8ytz.us-east-1.rds.amazonaws.com", "3306", "dbdiniz"))
 	// Teste de lista produtos
 	xmlFile, err := ioutil.ReadFile(xml)
 	reader := tools.ConvXml(xml)
@@ -213,7 +214,7 @@ func InsertEcf(xml string, dialect string, conexao string, digitosCodigo string)
 }
 
 func InsertSped(sped string, r *SpedExec.Regs, dialect string, conexao string) {
-	db, err := gorm.Open(dialect, conexao)
+	db, err := gorm.Open(dialect, fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8&parseTime=True", "userdiniz", "apmGj]Jj]]Jo", "dbdiniz.cjayksip8ytz.us-east-1.rds.amazonaws.com", "3306", "dbdiniz"))
 	file, err := os.Open(sped)
 	tools.CheckErr(err)
 	defer file.Close()

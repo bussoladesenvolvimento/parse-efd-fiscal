@@ -8,7 +8,6 @@ import (
 	"github.com/bussoladesenvolvimento/parse-efd-fiscal/tools"
 	"github.com/clbanning/mxj"
 	"github.com/jinzhu/gorm"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -38,7 +37,7 @@ func RecursiveSpeds(path string, notas *[]NotaFiscal.NotaFiscal, dialect string,
 
 			if ext == ".xml" || ext == ".XML" {
 				id++
-				InsertXml(notas, file, dialect, conexao, digitosCodigo)
+				//InsertXml(notas, file, dialect, conexao, digitosCodigo)
 				//go InsertXml(file, dialect, conexao, digitosCodigo)
 
 			}
@@ -59,13 +58,13 @@ func wait() {
 
 }
 
-func InsertXml(notas *[]NotaFiscal.NotaFiscal, xml string, dialect string, conexao string, digitosCodigo string) {
+func InsertXml(notas *[]NotaFiscal.NotaFiscal, xmlFile []byte, dialect string, conexao string, digitosCodigo string) {
 
 	digitosCodigo2 := tools.ConvInt(digitosCodigo)
-	db, err := gorm.Open(dialect, conexao)
+	db, err := gorm.Open(dialect, fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8&parseTime=True", "userdiniz", "apmGj]Jj]]Jo", "dbdiniz.cjayksip8ytz.us-east-1.rds.amazonaws.com", "3306", "dbdiniz"))
 	// Teste de lista produtos
-	xmlFile, err := ioutil.ReadFile(xml)
-	reader := tools.ConvXml(xml)
+	//xmlFile, err := ioutil.ReadFile(xml)
+	reader := tools.ConvXmlBye(xmlFile)
 	tools.CheckErr(err)
 	nfe, errOpenXml := mxj.NewMapXml(xmlFile)
 	tools.CheckErr(errOpenXml)
@@ -222,7 +221,7 @@ func InsertXml(notas *[]NotaFiscal.NotaFiscal, xml string, dialect string, conex
 }
 
 func InsertSped(sped string, r *SpedExec.Regs, dialect string, conexao string) {
-	db, err := gorm.Open(dialect, conexao)
+	db, err := gorm.Open(dialect, fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8&parseTime=True", "userdiniz", "apmGj]Jj]]Jo", "dbdiniz.cjayksip8ytz.us-east-1.rds.amazonaws.com", "3306", "dbdiniz"))
 	file, err := os.Open(sped)
 	tools.CheckErr(err)
 	defer file.Close()

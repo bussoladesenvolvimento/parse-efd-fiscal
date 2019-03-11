@@ -101,7 +101,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/notafiscal/dev/1552066149027-2019-03-08T17:29:09.027Z/notafiscal.zip"
+          "S3Key": "serverless/notafiscal/dev/1552322003261-2019-03-11T16:33:23.261Z/notafiscal.zip"
         },
         "FunctionName": "dev-notafiscal",
         "Handler": "bin/notafiscal",
@@ -181,7 +181,7 @@
         "MethodResponses": []
       }
     },
-    "ApiGatewayDeployment1552066149377": {
+    "ApiGatewayDeployment1552322003594": {
       "Type": "AWS::ApiGateway::Deployment",
       "Properties": {
         "RestApiId": "dow5w1jcx7",

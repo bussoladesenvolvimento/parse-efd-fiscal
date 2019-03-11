@@ -1,10 +1,25 @@
 package main
 
 import (
+	"bytes"
+	"encoding/base64"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"io"
+	"io/ioutil"
+	"mime"
+	"net/textproto"
+	"net/url"
+	"strconv"
+
 	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/awslabs/aws-lambda-go-api-proxy/core"
 	"github.com/bussoladesenvolvimento/parse-efd-fiscal/Controllers"
 	"github.com/bussoladesenvolvimento/parse-efd-fiscal/Models/NotaFiscal"
 	"github.com/bussoladesenvolvimento/parse-efd-fiscal/SpedDB"
@@ -17,6 +32,7 @@ import (
 	"github.com/tealeg/xlsx"
 	"log"
 	"net/http"
+	"path/filepath"
 	"sync"
 	"time"
 )
@@ -38,6 +54,62 @@ func init() {
 	config.InicializaConfiguracoes(cfg)
 }
 
+func createSchema()(*gorm.DB, error){
+	dialect, err := config.Propriedades.ObterTexto("bd.dialect")
+	conexao, err := config.Propriedades.ObterTexto("bd.conexao.mysql")
+
+
+	db, err := gorm.Open(dialect, fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8&parseTime=True", "userdiniz", "apmGj]Jj]]Jo", "dbdiniz.cjayksip8ytz.us-east-1.rds.amazonaws.com", "3306", "dbdiniz"))
+	db.LogMode(true)
+	//defer db.Close()
+	if err != nil {
+		fmt.Println("Falha ao abrir conexão. dialect=?, Linha de Conexao=?", dialect, conexao)
+		return  nil, err
+	}
+
+	if *schema {
+		// Recria o Schema do banco de dados
+		SpedDB.Schema(*db)
+	}
+
+	return db, nil
+}
+
+
+
+func runTeste(r events.APIGatewayProxyRequest) (*events.APIGatewayProxyResponse, error){
+
+	mydata := []byte("all my data I want to write to a file")
+	err := ioutil.WriteFile("/tmp/teste.xlsx", mydata, 0777)
+	// handle this error
+	if err != nil {
+		// print it out
+		fmt.Println(err)
+	}
+
+	//
+	//file, err := os.Create("/tmp/teste.txt")
+	//if err != nil {
+	//	fmt.Println("Cannot create file")
+	//}
+	//defer file.Close()
+	//
+	//bytes, _ := ioutil.ReadAll(file)
+
+	hds := make(map[string]string)
+	hds["Access-Control-Allow-Origin"] = "*"
+	hds["Access-Control-Allow-Headers"] = "*"
+	hds["Access-Control-Allow-Methods"] = "*"
+	hds["Access-Control-Allow-Credentials"] = "true"
+	hds["Content-type"] = "application/xlsx"
+	hds["Content-Description"] = "File Transfer"
+	hds["Content-Disposition"] = "attachment; filename=teste.xlsx"
+	hds["Content-Length"] = strconv.Itoa(len(string(mydata)))
+	hds["filename"] = "teste.xlsx"
+
+	return WriteBinary(mydata, hds, http.StatusOK)
+}
+
 func run(r events.APIGatewayProxyRequest) (*events.APIGatewayProxyResponse, error){
 
 	ht, err := ParseHttpRequest(r)
@@ -48,25 +120,15 @@ func run(r events.APIGatewayProxyRequest) (*events.APIGatewayProxyResponse, erro
 		return nil, nil
 	}
 
-	fmt.Println(file.Name)
+	db, err := createSchema()
+	if err != nil {
+		fmt.Println("Falha ao abrir conexão.")
+		return WriteStruct(NewDbError(), http.StatusBadRequest)
+	}
 
-
+	digitos, err := config.Propriedades.ObterTexto("bd.digit.cod")
 	dialect, err := config.Propriedades.ObterTexto("bd.dialect")
 	conexao, err := config.Propriedades.ObterTexto("bd.conexao.mysql")
-	digitos, err := config.Propriedades.ObterTexto("bd.digit.cod")
-	db, err := gorm.Open(dialect, conexao)
-	db.LogMode(true)
-	//defer db.Close()
-	if err != nil {
-		fmt.Println("Falha ao abrir conexão. dialect=?, Linha de Conexao=?", dialect, conexao)
-		return WriteStruct(NewUploadError(), http.StatusBadRequest)
-	}
-
-	if *schema {
-		// Recria o Schema do banco de dados
-		SpedDB.Schema(*db)
-	}
-
 	//if *ecf {
 	//	// Lendo todos arquivos da pasta speds
 	//	fmt.Println("Iniciando processamento ecf", time.Now())
@@ -82,15 +144,21 @@ func run(r events.APIGatewayProxyRequest) (*events.APIGatewayProxyResponse, erro
 
 		// Lendo todos arquivos da pasta speds
 		fmt.Println("Iniciando processamento ", time.Now())
-		SpedRead.RecursiveSpeds("./speds", &notas, dialect, conexao, digitos)
+		ext := filepath.Ext(file.Name)
+
+		if ext == ".xml" || ext == ".XML" {
+
+			SpedRead.InsertXml(&notas, file.Content, dialect, conexao, digitos)
+
+			//go InsertXml(file, dialect, conexao, digitosCodigo)
+		}
+
+		//SpedRead.RecursiveSpeds("./speds", &notas, dialect, conexao, digitos)
 		// Pega cada arquivo e ler linha a linha e envia para o banco de dados
 		fmt.Println("Final processamento ", time.Now())
-		var s string
-		fmt.Scanln(&s)
 	}
 
 	if *excelNota {
-
 
 		notas := Controllers.PopularItens(*db)
 
@@ -109,14 +177,67 @@ func run(r events.APIGatewayProxyRequest) (*events.APIGatewayProxyResponse, erro
 		Controllers.ExcelMenuNota(sheet)
 		Controllers.ExcelAddNota(notas, sheet)
 
-		err = file.Save("NotasFiscais.xlsx")
+		err = file.Save("/tmp/NotasFiscais.xlsx")
 		if err != nil {
 			fmt.Println(err)
 			return WriteStruct(NewUploadError(), http.StatusBadRequest)
-		} else {
-			fmt.Println("Arquivo de Analise Inventario Gerado com Sucesso!!!")
 		}
 
+		dat, err := ioutil.ReadFile("/tmp/NotasFiscais.xlsx")
+		if err != nil {
+			fmt.Println("Ops!! :" + err.Error())
+			return nil, err
+		}
+
+		filename := GenerateUniqueFilename("nota", "file.xlsx")
+		err = Upload("us-east-1", "export-diniz", "notas/" + filename, filename,  bytes.NewReader(dat))
+		if err != nil {
+			fmt.Println(err)
+			return WriteStruct(NewUploadS3Error(), http.StatusBadRequest)
+		}
+
+		urlFile, err := GetFileLink("us-east-1", "export-diniz", "notas/" + filename)
+		if err != nil {
+			fmt.Println(err)
+			return WriteStruct(NewUploadS3Error(), http.StatusBadRequest)
+		}
+
+		return WriteStruct(&APIResponseUrl{Success: true, Url:urlFile}, 200)
+
+		//text := ""
+		//for _, row := range sheet.Rows {
+		//	for _, cell := range row.Cells {
+		//		text += cell.String()+";"
+		//	}
+		//	text += "\r\n"
+		//}
+		//
+		//bytes := []byte(text)
+		//err = ioutil.WriteFile("/tmp/teste.csv", bytes, 0777)
+		//// handle this error
+		//if err != nil {
+		//	// print it out
+		//	fmt.Println(err)
+		//}
+		//bytes, err := ioutil.ReadAll(fileXls)
+		//if err != nil {
+		//	fmt.Println("Ops!! :" + err.Error())
+		//	return nil, err
+		//}
+
+		//hds := make(map[string]string)
+		//hds["Access-Control-Allow-Origin"] = "*"
+		//hds["Access-Control-Allow-Headers"] = "*"
+		//hds["Access-Control-Allow-Methods"] = "*"
+		//hds["Access-Control-Allow-Credentials"] = "true"
+		//hds["Content-type"] = "application/csv"
+		//hds["Content-Description"] = "File Transfer"
+		//hds["Content-Disposition"] = "attachment; filename=teste.csv"
+		//hds["Content-Length"] = strconv.Itoa(len(string(bytes)))
+		//hds["filename"] = "teste.csv"
+		//
+		//fmt.Println("retornou o donwload o arquivo ",  http.StatusAccepted)
+		//return WriteBinary(bytes, hds, http.StatusAccepted)
 	}
 
 	if *inventario {
@@ -213,5 +334,289 @@ func run(r events.APIGatewayProxyRequest) (*events.APIGatewayProxyResponse, erro
 func main() {
 
 	lambda.Start(run)
+	//db, err := createSchema()
+	//if err != nil {
+	//	fmt.Println("Falha ao abrir conexão.")
+	//}
+	//
+	//downloadNota(db)
 
+
+}
+
+
+
+type APIResponse struct {
+	Success bool `json:"success"`
+}
+
+type APIResponseUrl struct {
+	Success bool `json:"success"`
+	Url string `json:"url"`
+}
+
+type APIRequest struct {
+	file     []byte
+	fileName string
+	password string
+}
+
+
+type File struct{
+	Name string
+	Content []byte
+	Header textproto.MIMEHeader
+}
+
+type Error struct {
+	StatusCode int  `json:"status_code"`
+	Success bool `json:"success"`
+	ErrorType    string `json:"error"`
+	Message string `json:"message"`
+	Errors map[string][]string `json:"errors,omitempty"`
+}
+
+func NewDbError()*Error {
+	er := Error{}
+	er.Success = false
+	er.ErrorType = "db_error"
+	er.Message = "Erro connection db"
+	er.StatusCode = http.StatusBadRequest
+	return &er
+}
+
+func NewFileOpenError()*Error {
+	er := Error{}
+	er.Success = false
+	er.ErrorType = "file_open_error"
+	er.Message = "Erro file open"
+	er.StatusCode = http.StatusBadRequest
+	return &er
+}
+
+func NewFileSaveError()*Error {
+	er := Error{}
+	er.Success = false
+	er.ErrorType = "file_save_error"
+	er.Message = "Erro file save"
+	er.StatusCode = http.StatusBadRequest
+	return &er
+}
+
+func NewUploadS3Error()*Error {
+	er := Error{}
+	er.Success = false
+	er.ErrorType = "upload_s3_error"
+	er.Message = "Erro upload para s3"
+	er.StatusCode = http.StatusBadRequest
+	return &er
+}
+
+func NewUploadError()*Error {
+	er := Error{}
+	er.Success = false
+	er.ErrorType = "upload_error"
+	er.Message = "Erro upload"
+	er.StatusCode = http.StatusBadRequest
+	return &er
+}
+
+// WriteStructWithHeader - Generate APIGatewayProxyResponse to be return
+func WriteStructWithHeader(data interface{}, statusCode int, headers map[string]string) (*events.APIGatewayProxyResponse, error) {
+
+	bytes, err := json.Marshal(data)
+	w := core.NewProxyResponseWriter()
+	w.Header().Set("Content-Type", "application/json")
+
+	for key, header := range headers {
+		w.Header().Set(key, header)
+	}
+
+	w.WriteHeader(statusCode)
+	w.Write(bytes)
+	response, err := write(w)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
+func WriteStruct(data interface{}, statusCode int) (*events.APIGatewayProxyResponse, error) {
+
+	bytes, err := json.Marshal(data)
+	w := core.NewProxyResponseWriter()
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	w.Write(bytes)
+	resp, err := write(w)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
+
+func WriteBinary(data []byte, headers map[string]string, statusCode int) (*events.APIGatewayProxyResponse, error) {
+
+	w := core.NewProxyResponseWriter()
+	for k, v := range headers {
+		w.Header().Set(k, v)
+	}
+	w.WriteHeader(statusCode)
+	w.Write(data)
+
+	resp, err := write(w)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+func WriteString(data string, statusCode int) (*events.APIGatewayProxyResponse, error) {
+
+	w := core.NewProxyResponseWriter()
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	w.Write([]byte(data))
+
+	resp, err := write(w)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+func write(w *core.ProxyResponseWriter) (*events.APIGatewayProxyResponse, error) {
+
+	resp, err := w.GetProxyResponse()
+	if err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+
+// BasicAuth - Generate Base64 according with 'username' and 'password'.
+func GetBasicAuth(username, password string) string {
+	auth := username + ":" + password
+	return "Basic " +base64.StdEncoding.EncodeToString([]byte(auth))
+}
+
+func ParseHttpRequest(r events.APIGatewayProxyRequest)(*http.Request,error){
+
+	decodedBody := []byte(r.Body)
+
+	params := url.Values{}
+	for k, v := range r.QueryStringParameters {
+		params.Add(k, v)
+	}
+
+	if r.IsBase64Encoded {
+		base64Body, err := base64.StdEncoding.DecodeString(r.Body)
+		if err != nil {
+			return nil, err
+		}
+		decodedBody = base64Body
+	}
+
+	req,err := http.NewRequest(r.HTTPMethod,r.Path+"?"+params.Encode(),bytes.NewReader(decodedBody))
+
+	if err !=nil {
+		return nil, err
+	}
+
+	req.Header = make(map[string][]string)
+
+	for k, v := range r.Headers {
+		if k == "content-type" || k == "Content-Type" {
+			req.Header.Set(k, v)
+		}
+	}
+
+	return req,nil
+}
+
+
+func GetFile(field string,req *http.Request)(*File,error){
+
+	file, fh,err := req.FormFile(field)
+	if err!=nil{
+		return nil,err
+	}
+	buf := bytes.Buffer{}
+
+	if _, err := io.Copy(&buf, file); err != nil {
+		return nil, err
+	}
+
+	return &File{Name:fh.Filename,Content:buf.Bytes(),Header:fh.Header},nil
+}
+
+func Upload(region string, bucket string, key string, filename string, payload *bytes.Reader) error {
+
+	//select Region to use.
+	conf := aws.Config{Region: aws.String(region)}
+	sess := session.New(&conf)
+	svc := s3manager.NewUploader(sess)
+
+
+	result, err := svc.Upload(&s3manager.UploadInput{
+		Bucket:      aws.String(bucket),
+		Key:         aws.String(key),
+		Body:        payload,
+		ContentType: aws.String(mime.TypeByExtension(filepath.Ext(filename))),
+	})
+	if err != nil {
+		return err
+	}
+
+	log.Printf("Successfully uploaded %s to %s\n", filename, result.Location)
+
+	return nil
+}
+
+func GenerateUniqueFilename(prefix, identifier string) (fileName string){
+	time := strconv.Itoa(int(time.Now().UnixNano()))
+	fileName = prefix + "_" + time + "_" + identifier
+	return fileName
+}
+
+
+func GetFileLink(region string, bucket string, key string) (string, error) {
+
+	log.Println("Region: ", region)
+	sess, err := session.NewSession(&aws.Config{
+		Region: aws.String(region)},
+	)
+
+	svc := s3.New(sess)
+
+	log.Println("Bucket: ", bucket)
+	log.Println("Key: ", key)
+	params := &s3.GetObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+	}
+
+	req, _ := svc.GetObjectRequest(params)
+
+	_, err = svc.HeadObject(&s3.HeadObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+	})
+
+	if err != nil {
+		log.Printf(err.Error())
+		return "", nil
+	}
+
+	urlPathS3, err := req.Presign(60 * time.Minute) // Set link expiration time
+	if err != nil {
+		return "", err
+	}
+
+	return url.QueryEscape(urlPathS3), err
 }

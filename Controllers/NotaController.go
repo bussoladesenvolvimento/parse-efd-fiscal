@@ -17,9 +17,9 @@ func PopularItens(db gorm.DB)(*[]NotaFiscal.NotaFiscal) {
 	db.Preload("Itens").
 	   Preload("Emitente").
 	   Preload("Destinatario").
-	   Joins("join nota.items on nota.nota_fiscals.id=nota.items.nota_fiscal_id").
-	   Joins("left join nota.emitentes  on nota.emitentes.id = nota.nota_fiscals.emitente_id").
-	   Joins("left join nota.destinatarios  on nota.destinatarios.id = nota.nota_fiscals.destinatario_id").
+	   Joins("join items on nota_fiscals.id=items.nota_fiscal_id").
+	   Joins("left join emitentes  on emitentes.id = nota_fiscals.emitente_id").
+	   Joins("left join destinatarios  on destinatarios.id = nota_fiscals.destinatario_id").
 	   Find(&notas)
 
 
