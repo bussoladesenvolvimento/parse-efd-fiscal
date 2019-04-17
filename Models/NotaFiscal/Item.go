@@ -18,5 +18,25 @@ type Item struct {
 	VUnit        float64   `gorm:"type:decimal(19,3)"`
 	VTotal       float64   `gorm:"type:decimal(19,3)"`
 	DtEmit       time.Time `gorm:"type:date"`
+
+	//ICMS
+	IcmsModBC    int
+	IcmsCST      int
+	IcmsVBC      float64   `gorm:"type:decimal(19,3)"`
+	IcmsPerc     float64   `gorm:"type:decimal(19,3)"`
+	IcmsVal      float64   `gorm:"type:decimal(19,3)"`
+
+	//PIS
+	PisCST      int
+	PisVBC      float64   `gorm:"type:decimal(19,3)"`
+	PisPerc     float64   `gorm:"type:decimal(19,3)"`
+	PisVal      float64   `gorm:"type:decimal(19,3)"`
+
+	//COFINS
+	CofinsCST     int
+	CofinsVBC     float64   `gorm:"type:decimal(19,3)"`
+	CofinsPerc    float64   `gorm:"type:decimal(19,3)"`
+	CofinsVal     float64   `gorm:"type:decimal(19,3)"`
+
 	NotaFiscalID uint
 }

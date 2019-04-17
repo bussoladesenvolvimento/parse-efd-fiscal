@@ -98,6 +98,26 @@ func InsertXml(notas *[]NotaFiscal.NotaFiscal, xmlFile []byte, dialect string, c
 	qtd, err := nfe.ValuesForKey("qCom")
 	vUnit, err := nfe.ValuesForKey("vUnCom")
 	vTotal, err := nfe.ValuesForKey("vProd")
+
+	//modBC, err := nfe.ValuesForKey("modBC")
+	//pICMS, err := nfe.ValuesForKey("pICMS")
+	//vBC, err := nfe.ValuesForKey("vBC")
+	//vICMS, err := nfe.ValuesForKey("vICMS")
+	//vICMSDeson, err := nfe.ValuesForKey("vICMSDeson")
+	//vBCST, err := nfe.ValuesForKey("vBCST")
+	//vST, err := nfe.ValuesForKey("vST")
+	//vProd, err := nfe.ValuesForKey("vProd")
+	//vFrete, err := nfe.ValuesForKey("vFrete")
+	//vSeg, err := nfe.ValuesForKey("vSeg")
+	//vDesc, err := nfe.ValuesForKey("vDesc")
+	//vII, err := nfe.ValuesForKey("vII")
+	//vIPI, err := nfe.ValuesForKey("vIPI")
+	//vPIS, err := nfe.ValuesForKey("vPIS")
+	//vCOFINS, err := nfe.ValuesForKey("vCOFINS")
+	//vOutro, err := nfe.ValuesForKey("vOutro")
+	//vNF, err := nfe.ValuesForKey("vNF")
+	//vTotTrib, err := nfe.ValuesForKey("vTotTrib")
+
 	// Preenchendo Destinatario
 	cnpj := reader("dest", "CNPJ")
 	xNome := reader("dest", "xNome")
@@ -177,6 +197,26 @@ func InsertXml(notas *[]NotaFiscal.NotaFiscal, xmlFile []byte, dialect string, c
 		vuniti := vUnit[i].(string)
 		vtotali := vTotal[i2].(string)
 
+		//modBCi:= modBC[i].(string)
+		//pICMSi := pICMS[i].(string)
+		//vBCi := vBC[i].(string)
+		//vICMSi := vICMS[i].(string)
+		//vICMSDesoni := vICMSDeson[i].(string)
+		//vBCSTi := vBCST[i].(string)
+		//vSTi := vST[i].(string)
+		//vProdi := vProd[i].(string)
+		//vFretei := vFrete[i].(string)
+		//vSegi := vSeg[i].(string)
+		//vDesci := vDesc[i].(string)
+		//vIIi := vII[i].(string)
+		//vIPIi := vIPI[i].(string)
+		//vPISi := vPIS[i].(string)
+		//vCOFINSi := vCOFINS[i].(string)
+		//vOutroi := vOutro[i].(string)
+		//vNFi := vNF[i].(string)
+		//vTotTribi := vTotTrib[i].(string)
+
+
 		Item := NotaFiscal.Item{
 			Codigo:    codigoi,
 			Ean:       eani,
@@ -188,6 +228,24 @@ func InsertXml(notas *[]NotaFiscal.NotaFiscal, xmlFile []byte, dialect string, c
 			VUnit:     tools.ConvFloat(vuniti),
 			VTotal:    tools.ConvFloat(vtotali),
 			DtEmit:    tools.ConvertDataXml(dEmit),
+			//ModBC:     tools.ConvInt(modBCi),
+			//PICMS:     tools.ConvFloat(pICMSi),
+			//VBC:       tools.ConvFloat(vBCi),
+			//VICMS:     tools.ConvFloat(vICMSi),
+			//VICMSDeson:     tools.ConvFloat(vICMSDesoni),
+			//VBCST:     tools.ConvFloat(vBCSTi),
+			//VST:     tools.ConvFloat(vSTi),
+			//VProd:     tools.ConvFloat(vProdi),
+			//VFrete:     tools.ConvFloat(vFretei),
+			//VSeg:     tools.ConvFloat(vSegi),
+			//VDesc:     tools.ConvFloat(vDesci),
+			//VII:     tools.ConvFloat(vIIi),
+			//VIPI:     tools.ConvFloat(vIPIi),
+			//VPIS:     tools.ConvFloat(vPISi),
+			//VCOFINS:     tools.ConvFloat(vCOFINSi),
+			//VOutro:     tools.ConvFloat(vOutroi),
+			//VNF:     tools.ConvFloat(vNFi),
+			//VTotTrib:     tools.ConvFloat(vTotTribi),
 		}
 		itens = append(itens, Item)
 	}
@@ -213,6 +271,7 @@ func InsertXml(notas *[]NotaFiscal.NotaFiscal, xmlFile []byte, dialect string, c
 	}
 
 	fmt.Println("Inserindo nota fiscal no banco")
+	fmt.Println("ChNFe: ", notafiscal.ChNFe)
 	db.NewRecord(notafiscal)
 	db.Create(&notafiscal)
 	db.Close()

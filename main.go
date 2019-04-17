@@ -11,14 +11,17 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/clbanning/mxj"
 	"io"
 	"io/ioutil"
 	"mime"
 	"net/textproto"
 	"net/url"
+	"os"
+	"reflect"
 	"strconv"
 
-	"github.com/aws/aws-lambda-go/lambda"
+	//"github.com/aws/aws-lambda-go/lambda"
 	"github.com/awslabs/aws-lambda-go-api-proxy/core"
 	"github.com/bussoladesenvolvimento/parse-efd-fiscal/Controllers"
 	"github.com/bussoladesenvolvimento/parse-efd-fiscal/Models/NotaFiscal"
@@ -37,8 +40,8 @@ import (
 	"time"
 )
 
-var schema = flag.Bool("schema", false, "Recria as tabelas")
-var importa = flag.Bool("importa", false, "Importa os xmls e speds ")
+var schema = flag.Bool("schema", true, "Recria as tabelas")
+var importa = flag.Bool("importa", true, "Importa os xmls e speds ")
 var ecf = flag.Bool("ecf", false, "Importa os ecfs ")
 var inventario = flag.Bool("inventario", false, "Fazer processamento do inventario")
 var anoInicial = flag.Int("anoInicial", 2012, "Ano inicial do processamento do inventário")
@@ -77,48 +80,352 @@ func createSchema()(*gorm.DB, error){
 
 
 
-func runTeste(r events.APIGatewayProxyRequest) (*events.APIGatewayProxyResponse, error){
 
-	mydata := []byte("all my data I want to write to a file")
-	err := ioutil.WriteFile("/tmp/teste.xlsx", mydata, 0777)
-	// handle this error
+func runTeste(filename string) (){
+
+	resrouce := "./speds/" + filename
+	file, err := os.Open(resrouce) // For read access.
 	if err != nil {
-		// print it out
-		fmt.Println(err)
+		log.Fatal(err)
 	}
 
-	//
-	//file, err := os.Create("/tmp/teste.txt")
-	//if err != nil {
-	//	fmt.Println("Cannot create file")
+	defer file.Close()
+
+	buf := bytes.Buffer{}
+	if _, err := io.Copy(&buf, file); err != nil {
+		log.Fatal(err)
+	}
+
+	digitosCodigo, err := config.Propriedades.ObterTexto("bd.digit.cod")
+	xmlFile := buf.Bytes()
+
+	digitosCodigo2 := tools.ConvInt(digitosCodigo)
+	// Teste de lista produtos
+	//xmlFile, err := ioutil.ReadFile(xml)
+	//notas := [] NotaFiscal.NotaFiscal{}
+	//if err := xml.NewDecoder(file).Decode(&notas); err != nil {
+	//	log.Fatal(err)
+	//	return
 	//}
-	//defer file.Close()
-	//
-	//bytes, _ := ioutil.ReadAll(file)
 
-	hds := make(map[string]string)
-	hds["Access-Control-Allow-Origin"] = "*"
-	hds["Access-Control-Allow-Headers"] = "*"
-	hds["Access-Control-Allow-Methods"] = "*"
-	hds["Access-Control-Allow-Credentials"] = "true"
-	hds["Content-type"] = "application/xlsx"
-	hds["Content-Description"] = "File Transfer"
-	hds["Content-Disposition"] = "attachment; filename=teste.xlsx"
-	hds["Content-Length"] = strconv.Itoa(len(string(mydata)))
-	hds["filename"] = "teste.xlsx"
+	reader := tools.ConvXmlBye(xmlFile)
+	tools.CheckErr(err)
+	nfe, errOpenXml := mxj.NewMapXml(xmlFile)
+	tools.CheckErr(errOpenXml)
+	// Preenchendo o header da nfe
+	nNf := reader("ide", "nNF")
+	chnfe := reader("infProt", "chNFe")
+	natOp := reader("ide", "natOp")
+	indPag := reader("ide", "indPag")
+	mod := reader("ide", "mod")
+	serie := reader("ide", "serie")
+	dEmit := reader("ide", "dEmi")
+	if dEmit == "" {
+		dhEmit := reader("ide", "dhEmi")
+		dEmit = dhEmit
+	}
+	tpNf := reader("ide", "tpNF")
+	tpImp := reader("ide", "tpImp")
+	tpEmis := reader("ide", "tpEmis")
+	cdv := reader("ide", "cDV")
+	tpAmb := reader("ide", "tpAmb")
+	finNFe := reader("ide", "finNFe")
+	procEmi := reader("ide", "procEmi")
 
-	return WriteBinary(mydata, hds, http.StatusOK)
+	// Preenchendo itens
+	codigo, err := nfe.ValuesForKey("cProd")
+	ean, err := nfe.ValuesForKey("cEAN")
+	descricao, err := nfe.ValuesForKey("xProd")
+	ncm, err := nfe.ValuesForKey("NCM")
+	cfop, err := nfe.ValuesForKey("CFOP")
+	unid, err := nfe.ValuesForKey("uCom")
+	qtd, err := nfe.ValuesForKey("qCom")
+	vUnit, err := nfe.ValuesForKey("vUnCom")
+	vTotal, err := nfe.ValuesForKey("vProd")
+
+	icmsTotal, err := nfe.ValuesForKey("ICMSTot")
+	vIcmsTotal := reflect.ValueOf(icmsTotal[0])
+	fmt.Println(vIcmsTotal)
+
+	vBCi := ""
+	vICMS:= ""
+	vICMSDeson:=""
+	vBCST:=""
+	vST:=""
+	vProd:=""
+	vFrete:=""
+	vSeg:=""
+	vDesc:=""
+	vII:=""
+	vIPI:=""
+	vPIS:=""
+	vCOFINS:=""
+	vOutro:=""
+	vNF:=""
+	vTotTrib:=""
+	for _, k := range vIcmsTotal.MapKeys() {
+
+		fmt.Println(k.Interface())
+		fmt.Println(vIcmsTotal)
+		switch k.Interface() {
+		case "vBC":
+			value :=  vIcmsTotal.MapIndex(k)
+			vBCi = fmt.Sprintf("%s", value)
+		case "vICMS":
+			value :=  vIcmsTotal.MapIndex(k)
+			vICMS = fmt.Sprintf("%s", value)
+		case "vICMSDeson":
+			value :=  vIcmsTotal.MapIndex(k)
+			vICMSDeson = fmt.Sprintf("%s", value)
+		case "vBCST":
+			value :=  vIcmsTotal.MapIndex(k)
+			vBCST = fmt.Sprintf("%s", value)
+		case "vST":
+			value :=  vIcmsTotal.MapIndex(k)
+			vICMS = fmt.Sprintf("%s", value)
+		case "vProd":
+			value :=  vIcmsTotal.MapIndex(k)
+			vProd = fmt.Sprintf("%s", value)
+		case "vFrete":
+			value :=  vIcmsTotal.MapIndex(k)
+			vFrete = fmt.Sprintf("%s", value)
+		case "vSeg":
+			value :=  vIcmsTotal.MapIndex(k)
+			vSeg =fmt.Sprintf("%s", value)
+		case "vDesc":
+			value :=  vIcmsTotal.MapIndex(k)
+			vDesc = fmt.Sprintf("%s", value)
+		case "vII":
+			value :=  vIcmsTotal.MapIndex(k)
+			vII = fmt.Sprintf("%s", value)
+		case "vIPI":
+			value :=  vIcmsTotal.MapIndex(k)
+			vIPI = fmt.Sprintf("%s", value)
+		case "vPIS":
+			value :=  vIcmsTotal.MapIndex(k)
+			vPIS = fmt.Sprintf("%s", value)
+		case "vCOFINS":
+			value :=  vIcmsTotal.MapIndex(k)
+			vCOFINS = fmt.Sprintf("%s", value)
+		case "vOutro":
+			value :=  vIcmsTotal.MapIndex(k)
+			vOutro = fmt.Sprintf("%s", value)
+		case "vNF":
+			value :=  vIcmsTotal.MapIndex(k)
+			vNF = fmt.Sprintf("%s", value)
+		case "vTotTrib":
+			value :=  vIcmsTotal.MapIndex(k)
+			vTotTrib = fmt.Sprintf("%s", value)
+		}
+
+	}
+
+
+	//vICMSi :=  mIcmsTotal.MapKeys()[1]
+	//vICMSDesoni :=  mIcmsTotal.MapKeys()[2]
+	//vBCSTi :=  mIcmsTotal.MapKeys()[3]
+	//vSTi := mIcmsTotal.MapKeys()[4]
+	//vProdi :=  mIcmsTotal.MapKeys()[5]
+	//vFretei := vFrete[0].(string)
+	//vSegi := vSeg[0].(string)
+	//vDesci := vDesc[0].(string)
+	//vIIi := vII[0].(string)
+	//vIPIi := vIPI[0].(string)
+	//vPISi := vPIS[0].(string)
+	//vCOFINSi := vCOFINS[0].(string)
+	//vOutroi := vOutro[0].(string)
+	//vNFi := vNF[0].(string)
+	//vTotTribi := vTotTrib[0].(string)
+
+	imposto, err := nfe.ValuesForKey("imposto")
+	//iCMSTot, err := nfe.ValuesForKey("ICMSTot")
+	//fmt.Println(iCMSTot)
+
+	// Preenchendo Destinatario
+	cnpj := reader("dest", "CNPJ")
+	xNome := reader("dest", "xNome")
+	xLgr := reader("enderDest", "xLgr")
+	nro := reader("enderDest", "nro")
+	xCpl := reader("enderDest", "xCpl")
+	xBairro := reader("enderDest", "xBairro")
+	cMun := reader("enderDest", "cMun")
+	xMun := reader("enderDest", "xMun")
+	uf := reader("enderDest", "UF")
+	cep := reader("enderDest", "CEP")
+	cPais := reader("enderDest", "cPais")
+	xPais := reader("enderDest", "xPais")
+	fone := reader("enderDest", "fone")
+	ie := reader("dest", "IE")
+	// Preenchendo Emitente
+	cnpje := reader("emit", "CNPJ")
+	xNomee := reader("emit", "xNome")
+	xLgre := reader("enderEmit", "xLgr")
+	nroe := reader("enderEmit", "nro")
+	xCple := reader("enderEmit", "xCpl")
+	xBairroe := reader("enderEmit", "xBairro")
+	cMune := reader("enderEmit", "cMun")
+	xMune := reader("enderEmit", "xMun")
+	ufe := reader("enderEmit", "UF")
+	cepe := reader("enderEmit", "CEP")
+	cPaise := reader("enderEmit", "cPais")
+	xPaise := reader("enderEmit", "xPais")
+	fonee := reader("enderEmit", "fone")
+	iee := reader("emit", "IE")
+
+	destinatario := NotaFiscal.Destinatario{
+		CNPJ:    cnpj,
+		XNome:   xNome,
+		XLgr:    xLgr,
+		Nro:     nro,
+		XCpl:    xCpl,
+		XBairro: xBairro,
+		CMun:    cMun,
+		XMun:    xMun,
+		Uf:      uf,
+		Cep:     cep,
+		CPais:   cPais,
+		XPais:   xPais,
+		Fone:    fone,
+		Ie:      ie,
+	}
+
+	emitentede := NotaFiscal.Emitente{
+		CNPJ:    cnpje,
+		XNome:   xNomee,
+		XLgr:    xLgre,
+		Nro:     nroe,
+		XCpl:    xCple,
+		XBairro: xBairroe,
+		CMun:    cMune,
+		XMun:    xMune,
+		Uf:      ufe,
+		Cep:     cepe,
+		CPais:   cPaise,
+		XPais:   xPaise,
+		Fone:    fonee,
+		Ie:      iee,
+	}
+
+	var itens []NotaFiscal.Item
+
+	for i, _ := range codigo {
+		i2 := i + 1
+		codigoi := tools.AdicionaDigitosCodigo(codigo[i].(string), digitosCodigo2)
+		eani := ean[i].(string)
+		descricaoi := descricao[i].(string)
+		ncmi := ncm[i].(string)
+		cfopi := cfop[i].(string)
+		unidi := unid[i].(string)
+		qtdi := qtd[i].(string)
+		vuniti := vUnit[i].(string)
+		vtotali := vTotal[i2].(string)
+
+		pCST  := ""
+		pvBC  := ""
+		pPIS  := ""
+		pvPIS := ""
+
+		impostoprod := imposto[i]
+		v := reflect.ValueOf(impostoprod)
+		fmt.Printf("Type: %v\n", v)     // map[]
+		if v.Kind() == reflect.Map {
+			for _, key := range v.MapKeys() {
+				strct := v.MapIndex(key)
+				fmt.Println(key.Interface(), strct.Interface())
+
+				if key.Interface() == "PIS" {
+					teste:= reflect.ValueOf(strct.Interface())
+					for _, kk := range teste.MapKeys() {
+						pISAliq := teste.MapIndex(kk)
+						mPis := reflect.ValueOf(pISAliq.Interface())
+						for _, kkk := range mPis.MapKeys() {
+
+							fmt.Println(kkk.Interface())
+							switch kkk.Interface() {
+							case "CST":
+								value :=  mPis.MapIndex(kkk)
+								pCST = fmt.Sprintf("%s", value)
+							case "vBC":
+								value :=  mPis.MapIndex(kkk)
+								pvBC = fmt.Sprintf("%s", value)
+							case "pPIS":
+								value :=  mPis.MapIndex(kkk)
+								pPIS = fmt.Sprintf("%s", value)
+							case "vPIS":
+								value :=  mPis.MapIndex(kkk)
+								pvPIS = fmt.Sprintf("%s", value)
+							}
+
+						}
+					}
+				}
+
+
+			}
+		}
+
+		Item := NotaFiscal.Item{
+			Codigo:    codigoi,
+			Ean:       eani,
+			Descricao: descricaoi,
+			Ncm:       ncmi,
+			Cfop:      cfopi,
+			Unid:      unidi,
+			Qtd:       tools.ConvFloat(qtdi),
+			VUnit:     tools.ConvFloat(vuniti),
+			VTotal:    tools.ConvFloat(vtotali),
+			DtEmit:    tools.ConvertDataXml(dEmit),
+			PisCST:    tools.ConvInt(pCST),
+			PisVBC:    tools.ConvFloat(pvBC),
+			PisVal:    tools.ConvFloat(pvPIS),
+			PisPerc:   tools.ConvFloat(pPIS),
+		}
+		itens = append(itens, Item)
+	}
+
+	notafiscal := NotaFiscal.NotaFiscal{
+		NNF:          nNf,
+		ChNFe:        chnfe,
+		NatOp:        natOp,
+		IndPag:       indPag,
+		Mod:          mod,
+		Serie:        serie,
+		DEmi:         tools.ConvertDataXml(dEmit),
+		TpNF:         tpNf,
+		TpImp:        tpImp,
+		TpEmis:       tpEmis,
+		CDV:          cdv,
+		TpAmb:        tpAmb,
+		FinNFe:       finNFe,
+		ProcEmi:      procEmi,
+		Emitente:     emitentede,
+		Destinatario: destinatario,
+		ICMSTotVBC:   tools.ConvFloat(fmt.Sprintf("%s", vBCi)),
+		ICMSTotVICMS: tools.ConvFloat(fmt.Sprintf("%s", vICMS)),
+		ICMSTotVICMSDeson: tools.ConvFloat(fmt.Sprintf("%s", vICMSDeson)),
+		ICMSTotVBCST: tools.ConvFloat(fmt.Sprintf("%s", vBCST)),
+		ICMSTotVST: tools.ConvFloat(fmt.Sprintf("%s", vST)),
+		ICMSTotVProd: tools.ConvFloat(fmt.Sprintf("%s", vProd)),
+		ICMSTotVFrete: tools.ConvFloat(fmt.Sprintf("%s", vFrete)),
+		ICMSTotVSeg: tools.ConvFloat(fmt.Sprintf("%s", vSeg)),
+		ICMSTotVDesc: tools.ConvFloat(fmt.Sprintf("%s", vDesc)),
+		ICMSTotVII: tools.ConvFloat(fmt.Sprintf("%s", vII)),
+		ICMSTotVIPI: tools.ConvFloat(fmt.Sprintf("%s", vIPI)),
+		ICMSTotVPIS: tools.ConvFloat(fmt.Sprintf("%s", vPIS)),
+		ICMSTotVCOFINS: tools.ConvFloat(fmt.Sprintf("%s", vCOFINS)),
+		ICMSTotVOutro: tools.ConvFloat(fmt.Sprintf("%s", vOutro)),
+		ICMSTotVNF: tools.ConvFloat(fmt.Sprintf("%s", vNF)),
+		ICMSTotVTotTrib: tools.ConvFloat(fmt.Sprintf("%s", vTotTrib)),
+		Itens:        itens,
+	}
+
+	fmt.Println("Nota Fiscal: ", notafiscal)
+
 }
 
+
+
 func run(r events.APIGatewayProxyRequest) (*events.APIGatewayProxyResponse, error){
-
-	ht, err := ParseHttpRequest(r)
-
-	file, err := GetFile("file", ht)
-	if err != nil {
-		log.Println(err.Error())
-		return nil, nil
-	}
 
 	db, err := createSchema()
 	if err != nil {
@@ -126,37 +433,110 @@ func run(r events.APIGatewayProxyRequest) (*events.APIGatewayProxyResponse, erro
 		return WriteStruct(NewDbError(), http.StatusBadRequest)
 	}
 
-	digitos, err := config.Propriedades.ObterTexto("bd.digit.cod")
-	dialect, err := config.Propriedades.ObterTexto("bd.dialect")
-	conexao, err := config.Propriedades.ObterTexto("bd.conexao.mysql")
-	//if *ecf {
-	//	// Lendo todos arquivos da pasta speds
-	//	fmt.Println("Iniciando processamento ecf", time.Now())
-	//	EcfRead.RecursiveEcfs("./ecfs", dialect, conexao, digitos)
-	//	// Pega cada arquivo e ler linha a linha e envia para o banco de dados
-	//	fmt.Println("Final processamento ecf", time.Now())
-	//	var s string
-	//	fmt.Scanln(&s)
-	//}
+	ht, err := ParseHttpRequest(r)
+	err = ht.ParseMultipartForm(ht.ContentLength)                     // Parses the request body
+	if err != nil {
+		log.Println(err.Error())
+		return nil, nil
+	}
 
-	notas := []NotaFiscal.NotaFiscal{}
-	if *importa {
-
-		// Lendo todos arquivos da pasta speds
-		fmt.Println("Iniciando processamento ", time.Now())
-		ext := filepath.Ext(file.Name)
-
-		if ext == ".xml" || ext == ".XML" {
-
-			SpedRead.InsertXml(&notas, file.Content, dialect, conexao, digitos)
-
-			//go InsertXml(file, dialect, conexao, digitosCodigo)
+	formdata := ht.MultipartForm
+	files := formdata.File["multiplefiles"]
+	for i, _ := range files {
+		file, err := files[i].Open()
+		fmt.Println("File ", file)
+		defer file.Close()
+		if err != nil {
+			log.Println(err.Error())
+			return nil, nil
 		}
 
-		//SpedRead.RecursiveSpeds("./speds", &notas, dialect, conexao, digitos)
-		// Pega cada arquivo e ler linha a linha e envia para o banco de dados
-		fmt.Println("Final processamento ", time.Now())
+		buf := bytes.Buffer{}
+		if _, err := io.Copy(&buf, file); err != nil {
+			return nil, err
+		}
+
+		fmt.Println("Filename: ", files[i].Filename)
+		fmt.Println("Header: ", files[i].Header)
+		newFile := &File{Name: files[i].Filename,Content:buf.Bytes(),Header:files[i].Header}
+
+
+		digitos, err := config.Propriedades.ObterTexto("bd.digit.cod")
+		dialect, err := config.Propriedades.ObterTexto("bd.dialect")
+		conexao, err := config.Propriedades.ObterTexto("bd.conexao.mysql")
+		//if *ecf {
+		//	// Lendo todos arquivos da pasta speds
+		//	fmt.Println("Iniciando processamento ecf", time.Now())
+		//	EcfRead.RecursiveEcfs("./ecfs", dialect, conexao, digitos)
+		//	// Pega cada arquivo e ler linha a linha e envia para o banco de dados
+		//	fmt.Println("Final processamento ecf", time.Now())
+		//	var s string
+		//	fmt.Scanln(&s)
+		//}
+
+		notas := []NotaFiscal.NotaFiscal{}
+		if *importa {
+
+			// Lendo todos arquivos da pasta speds
+			fmt.Println("Iniciando processamento ", time.Now())
+			ext := filepath.Ext(newFile.Name)
+
+			if ext == ".xml" || ext == ".XML" {
+
+				SpedRead.InsertXml(&notas, newFile.Content, dialect, conexao, digitos)
+
+				//go InsertXml(file, dialect, conexao, digitosCodigo)
+			}
+
+			//SpedRead.RecursiveSpeds("./speds", &notas, dialect, conexao, digitos)
+			// Pega cada arquivo e ler linha a linha e envia para o banco de dados
+			fmt.Println("Final processamento ", time.Now())
+		}
+
+		fmt.Println("Filename: ",  files[i].Filename)
+
 	}
+	//fmt.Println("ponto 3")
+	//for i := range ht.Form {
+	//	fmt.Println("ponto 4")
+	//	ht.
+	//	file, err := GetFile(i, ht)
+	//	fmt.Println("ponto 5")
+	//	fmt.Println("i: ", i)
+	//	fmt.Println("ht: ", ht)
+	//	fmt.Println("file: ", file)
+	//	if err != nil {
+	//		log.Println(err.Error())
+	//		return nil, nil
+	//	}
+	//	fmt.Println("file ", file)
+	//	fmt.Println("get key ", i)
+    //    fmt.Println(ht.Form.Get(i))
+	//}
+	//fmt.Println("ponto 6")
+	//files, fheader,err := ht.FormFile("attachments")
+	//if err!=nil{
+	//	fmt.Println("deu erro")
+	//	fmt.Println(err)
+	//	return nil,err
+	//}
+	//
+	//if files != nil {
+	//	fmt.Println(files)
+	//}
+	//
+	//if fheader != nil {
+	//	fmt.Println(fheader)
+	//}
+	//
+	//file, err := GetFile("file", ht)
+	//if err != nil {
+	//	log.Println(err.Error())
+	//	return nil, nil
+	//}
+
+	//fmt.Println("File: ", file.Name)
+
 
 	if *excelNota {
 
@@ -201,8 +581,12 @@ func run(r events.APIGatewayProxyRequest) (*events.APIGatewayProxyResponse, erro
 			fmt.Println(err)
 			return WriteStruct(NewUploadS3Error(), http.StatusBadRequest)
 		}
-
-		return WriteStruct(&APIResponseUrl{Success: true, Url:urlFile}, 200)
+		hds := make(map[string]string)
+		hds["Access-Control-Allow-Origin"] = "*"
+		hds["Access-Control-Allow-Headers"] = "*"
+		hds["Access-Control-Allow-Methods"] = "*"
+		hds["Access-Control-Allow-Credentials"] = "true"
+		return WriteStructWithHeader(APIResponseUrl{Success: true, Url:urlFile},http.StatusOK,hds)
 
 		//text := ""
 		//for _, row := range sheet.Rows {
@@ -332,8 +716,8 @@ func run(r events.APIGatewayProxyRequest) (*events.APIGatewayProxyResponse, erro
 }
 
 func main() {
-
-	lambda.Start(run)
+	runTeste("nota11.xml")
+	//lambda.Start(run)
 	//db, err := createSchema()
 	//if err != nil {
 	//	fmt.Println("Falha ao abrir conexão.")

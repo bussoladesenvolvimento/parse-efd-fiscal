@@ -39,7 +39,18 @@
         "Description": "The AWS CloudFormation template for this Serverless application",
         "Resources": {
           "ServerlessDeploymentBucket": {
-            "Type": "AWS::S3::Bucket"
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+              "BucketEncryption": {
+                "ServerSideEncryptionConfiguration": [
+                  {
+                    "ServerSideEncryptionByDefault": {
+                      "SSEAlgorithm": "AES256"
+                    }
+                  }
+                ]
+              }
+            }
           },
           "NotafiscalLogGroup": {
             "Type": "AWS::Logs::LogGroup",
@@ -131,7 +142,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/notafiscal/dev/1552322003261-2019-03-11T16:33:23.261Z/notafiscal.zip"
+                "S3Key": "serverless/notafiscal/dev/1555178993561-2019-04-13T18:09:53.561Z/notafiscal.zip"
               },
               "FunctionName": "dev-notafiscal",
               "Handler": "bin/notafiscal",
@@ -167,6 +178,51 @@
             "Properties": {
               "ParentId": "fjy1lzb85l",
               "PathPart": "file",
+              "RestApiId": "dow5w1jcx7"
+            }
+          },
+          "ApiGatewayMethodFileOptions": {
+            "Type": "AWS::ApiGateway::Method",
+            "Properties": {
+              "AuthorizationType": "NONE",
+              "HttpMethod": "OPTIONS",
+              "MethodResponses": [
+                {
+                  "StatusCode": "200",
+                  "ResponseParameters": {
+                    "method.response.header.Access-Control-Allow-Origin": true,
+                    "method.response.header.Access-Control-Allow-Headers": true,
+                    "method.response.header.Access-Control-Allow-Methods": true,
+                    "method.response.header.Access-Control-Allow-Credentials": true
+                  },
+                  "ResponseModels": {}
+                }
+              ],
+              "RequestParameters": {},
+              "Integration": {
+                "Type": "MOCK",
+                "RequestTemplates": {
+                  "application/json": "{statusCode:200}"
+                },
+                "ContentHandling": "CONVERT_TO_TEXT",
+                "IntegrationResponses": [
+                  {
+                    "StatusCode": "200",
+                    "ResponseParameters": {
+                      "method.response.header.Access-Control-Allow-Origin": "'*'",
+                      "method.response.header.Access-Control-Allow-Headers": "'Accept,Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent'",
+                      "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,POST'",
+                      "method.response.header.Access-Control-Allow-Credentials": "'true'"
+                    },
+                    "ResponseTemplates": {
+                      "application/json": ""
+                    }
+                  }
+                ]
+              },
+              "ResourceId": {
+                "Ref": "ApiGatewayResourceFile"
+              },
               "RestApiId": "dow5w1jcx7"
             }
           },
@@ -211,13 +267,14 @@
               "MethodResponses": []
             }
           },
-          "ApiGatewayDeployment1552322003594": {
+          "ApiGatewayDeployment1555178993889": {
             "Type": "AWS::ApiGateway::Deployment",
             "Properties": {
               "RestApiId": "dow5w1jcx7",
               "StageName": "dev"
             },
             "DependsOn": [
+              "ApiGatewayMethodFileOptions",
               "ApiGatewayMethodFilePost"
             ]
           },
@@ -297,7 +354,18 @@
         "Description": "The AWS CloudFormation template for this Serverless application",
         "Resources": {
           "ServerlessDeploymentBucket": {
-            "Type": "AWS::S3::Bucket"
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+              "BucketEncryption": {
+                "ServerSideEncryptionConfiguration": [
+                  {
+                    "ServerSideEncryptionByDefault": {
+                      "SSEAlgorithm": "AES256"
+                    }
+                  }
+                ]
+              }
+            }
           }
         },
         "Outputs": {
@@ -322,6 +390,23 @@
             "http": {
               "path": "file",
               "method": "post",
+              "cors": {
+                "origin": "*",
+                "headers": [
+                  "Accept",
+                  "Content-Type",
+                  "X-Amz-Date",
+                  "Authorization",
+                  "X-Api-Key",
+                  "X-Amz-Security-Token",
+                  "X-Amz-User-Agent"
+                ],
+                "allowCredentials": true,
+                "methods": [
+                  "OPTIONS",
+                  "POST"
+                ]
+              },
               "integration": "AWS_PROXY"
             }
           }
@@ -339,7 +424,7 @@
     "artifact": "/home/ricardo/go/src/github.com/bussoladesenvolvimento/parse-efd-fiscal/.serverless/notafiscal.zip"
   },
   "package": {
-    "artifactDirectoryName": "serverless/notafiscal/dev/1552322003261-2019-03-11T16:33:23.261Z",
+    "artifactDirectoryName": "serverless/notafiscal/dev/1555178993561-2019-04-13T18:09:53.561Z",
     "artifact": "notafiscal.zip"
   }
 }

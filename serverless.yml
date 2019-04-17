@@ -48,6 +48,17 @@ functions:
       - http:
           path: /file
           method: post
+          cors:
+            origin: '*' # <-- Specify allowed origin
+            headers: # <-- Specify allowed headers
+              - Accept
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+              - X-Amz-User-Agent
+            allowCredentials: true
     environment:
       LANGUAGE_DEFAULT: pt-BR
 
